@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 require 'curses'
+require 'yaml'
 
 class Line
   attr_accessor :action
@@ -108,9 +109,21 @@ class RubyFocus
     end
   end
 
-  def initialize
-    @pages = Array.new
-    generate_test_data
+  def save_data
+    File.open("pages.yaml", "w") do |file|
+      file.syswrite(self.to_yaml)
+    end
+  end
+
+  def RubyFocus.load_data
+    focus = nil
+    File.open("pages.yaml", "r") do |file|
+      focus = YAML::load(file.read)
+    end
+    return focus
+  end
+
+  def run
     init_screen do
       loop do
         page = @pages.at(@current_page)
@@ -121,11 +134,8 @@ class RubyFocus
         when Curses::Key::LEFT then page_backward
         when Curses::Key::RIGHT then page_forward
         when ?a then enter_action
-        when ?s then begin
-          l = page.lines.at(@current_line)
-          l.active = !l.active
-        end
-        when ?q then break
+        when ?s then l = page.lines.at(@current_line); l.active = !l.active
+        when ?q then save_data; break
         end
       end
     end
@@ -134,7 +144,7 @@ class RubyFocus
   
 end
 
-RubyFocus.new()
+RubyFocus.load_data.run
 
 # vim:ts=2:expandtab:sw=2:
 
