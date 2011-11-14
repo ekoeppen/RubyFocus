@@ -17,7 +17,7 @@ class Page
   
   attr_accessor :lines
   attr_accessor :number
-  @@k_max_length = 10
+  @@k_max_length = 20
 
   def initialize
     @lines = Array.new
@@ -35,6 +35,7 @@ class RubyFocus
   attr_accessor :current_page
   attr_accessor :current_line
   attr_accessor :use_color
+  attr_accessor :dismissed
  
   def init_colors
     @use_color = nil
@@ -178,12 +179,24 @@ class RubyFocus
     end
   end
 
+  def dismiss_page
+    @pages[@current_page].lines.each do |a|
+      @dismissed << a.action if a.state < 2
+    end
+    @pages.delete_at(@current_page)
+    if @current_page == @pages.length then @current_page = @current_page - 1 end
+    if @current_page == -1
+      @current_page = 0
+      @pages << Page.new
+    end
+  end
+
   def save_data
     File.open("pages.yaml", "w") do |file|
       file.syswrite(self.to_yaml)
     end
   end
-
+  
   def RubyFocus.load_data
     focus = nil
     begin
@@ -209,6 +222,7 @@ class RubyFocus
         when ?e then edit_action
         when ?a then enter_action
         when ?s then toggle_action
+        when ?D then dismiss_page
         when ?q then save_data; break
         end
       end
