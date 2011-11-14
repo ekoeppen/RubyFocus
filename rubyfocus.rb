@@ -86,7 +86,7 @@ class RubyFocus
         end
         when ?s then begin
           l = @current_page.lines.at(@current_line)
-          l.active = l.active
+          l.active = !l.active
         end
         when ?q then break
         end
