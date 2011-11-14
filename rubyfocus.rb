@@ -2,6 +2,16 @@
 
 require 'curses'
 
+class Line
+    attr_accessor :action
+    attr_accessor :active
+
+    def initialize(theAction, isActive = nil)
+      @action = theAction
+      @active = isActive
+    end
+end
+
 class Page
   
   attr_accessor :lines
@@ -37,7 +47,7 @@ class RubyFocus
 
   def generate_test_data
     page = Page.new
-    page.lines << "Line one" << "Line two" << "Line three"
+    page.lines << Line.new("Line one")<< Line.new("Line two", true) << Line.new("Line three")
     
     @pages << page
     @current_page = page
@@ -48,10 +58,10 @@ class RubyFocus
     i = 0
     for l in @current_page.lines do
       Curses.setpos(i, 0)
-#      if i == @current_line then Curses.stdscr.color_set(1) end
       Curses.addstr(if i == @current_line then "-> " else "   " end)
-      Curses.addstr(l)
-#      if i == @current_line then Curses.stdscr.color_set(0) end
+      if l.active then Curses.stdscr.color_set(1) end
+      Curses.addstr(l.action)
+      if l.active then Curses.stdscr.color_set(0) end
       i = i + 1
     end
     Curses.refresh
@@ -71,8 +81,12 @@ class RubyFocus
         when ?a then begin
           Curses.echo; Curses.curs_set(1)
           Curses.setpos(10, 0)
-          Curses.getstr
+          @current_page.lines << Line.new(Curses.getstr)
           Curses.noecho; Curses.curs_set(0)
+        end
+        when ?s then begin
+          l = @current_page.lines.at(@current_line)
+          l.active = l.active
         end
         when ?q then break
         end
@@ -84,3 +98,6 @@ class RubyFocus
 end
 
 RubyFocus.new()
+
+# vim:ts=2:expandtab:sw=2:
+
