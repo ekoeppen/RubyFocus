@@ -5,11 +5,11 @@ require 'yaml'
 
 class Line
   attr_accessor :action
-  attr_accessor :active
+  attr_accessor :state
 
-  def initialize(theAction, isActive = nil)
+  def initialize(theAction, aState = 0)
     @action = theAction
-    @active = isActive
+    @state = aState
   end
 end
 
@@ -43,6 +43,7 @@ class RubyFocus
     Curses.curs_set(0)
     Curses.init_pair(0, Curses::COLOR_BLACK, Curses::COLOR_RED)
     Curses.init_pair(1, Curses::COLOR_RED, Curses::COLOR_BLACK)
+    Curses.init_pair(2, Curses::COLOR_GREEN, Curses::COLOR_BLACK)
     Curses.stdscr.color_set(0)
     begin
       yield
@@ -62,22 +63,48 @@ class RubyFocus
     @current_line = 0
   end
 
-  def enter_action
-    page = @pages.at(@current_page)
-    if page.lines.length > Page.max_length
-      page = Page.new
-      @pages << page
-      @current_page = @current_page + 1
-      @current_line = 0
-      Curses.clear
+  def enter_action(action = nil)
+    clear = false
+    i = @current_page
+    while @pages[i].lines.length > Page.max_length and i < pages.length 
+      i = i + 1
     end
+    if i == pages.length 
+      @pages << Page.new
+      @current_line = 0
+    end
+    if not action
+      Curses.echo; Curses.curs_set(1)
+      Curses.setpos(0, 0)
+      Curses.addstr("New action: ")
+      @pages[i].lines << Line.new(Curses.getstr)
+      Curses.noecho; Curses.curs_set(0)
+      Curses.setpos(0, 0)
+      Curses.clrtoeol
+    else
+      @pages[i].lines << Line.new(action)
+    end
+  end
+
+  def edit_action
+    page = @pages.at(@current_page)
     Curses.echo; Curses.curs_set(1)
     Curses.setpos(0, 0)
-    Curses.addstr("New action: ")
-    page.lines << Line.new(Curses.getstr)
+    Curses.addstr("Edit action: ")
+    page.lines[@current_line] = Line.new(Curses.getstr)
     Curses.noecho; Curses.curs_set(0)
     Curses.setpos(0, 0)
     Curses.clrtoeol
+  end
+
+  def toggle_action
+    a = @pages[@current_page].lines[@current_line]
+    if a.state < 2
+      if a.state == 1
+        enter_action(a.action)
+      end
+      a.state = a.state + 1
+    end
   end
 
   def show_page
@@ -85,9 +112,13 @@ class RubyFocus
     for l in @pages.at(@current_page).lines do
       Curses.setpos(i + 2, 0)
       Curses.addstr(if i == @current_line then "-> " else "   " end)
-      if l.active then Curses.stdscr.color_set(1) end
+      if l.state == 1
+        Curses.stdscr.color_set(1)
+      elsif l.state == 2
+        Curses.stdscr.attrset(Curses::A_DIM)
+      end
       Curses.addstr(l.action)
-      if l.active then Curses.stdscr.color_set(0) end
+      if l.state != 0 then Curses.stdscr.color_set(0); Curses.stdscr.attrset(Curses::A_NORMAL) end
       i = i + 1
     end
     Curses.refresh
@@ -133,8 +164,9 @@ class RubyFocus
         when Curses::Key::DOWN then if @current_line < page.lines.length - 1 then @current_line = @current_line + 1 end
         when Curses::Key::LEFT then page_backward
         when Curses::Key::RIGHT then page_forward
+        when ?e then edit_action
         when ?a then enter_action
-        when ?s then l = page.lines.at(@current_line); l.active = !l.active
+        when ?s then toggle_action
         when ?q then save_data; break
         end
       end
