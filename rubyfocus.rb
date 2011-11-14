@@ -34,17 +34,44 @@ class RubyFocus
   attr_accessor :pages
   attr_accessor :current_page
   attr_accessor :current_line
+  attr_accessor :use_color
+ 
+  def init_colors
+    @use_color = nil
+    if @use_color
+      Curses.start_color
+      Curses.init_pair(1, Curses::COLOR_WHITE, Curses::COLOR_BLACK)
+      Curses.init_pair(2, Curses::COLOR_RED, Curses::COLOR_BLACK)
+      Curses.init_pair(3, Curses::COLOR_GREEN, Curses::COLOR_BLACK)
+    end
+    set_normal_color
+  end
+  
+  def set_normal_color
+    if @use_color then Curses.stdscr.color_set(1) else Curses.stdscr.attrset(Curses::A_BOLD) end
+  end
+  
+  def set_active_color
+    if @use_color then Curses.stdscr.color_set(2) else Curses.stdscr.attrset(Curses::A_STANDOUT) end
+  end
+  
+  def set_done_color
+    if @use_color then Curses.stdscr.color_set(3) else Curses.stdscr.attrset(Curses::A_DIM) end
+  end
+  
+  def initialize
+    @pages = Array.new
+    @pages << Page.new
+    @current_page = 0
+    @current_line = 0
+  end
 
   def init_screen
     Curses.noecho
     Curses.init_screen
-    Curses.start_color
     Curses.stdscr.keypad(true)
     Curses.curs_set(0)
-    Curses.init_pair(0, Curses::COLOR_BLACK, Curses::COLOR_RED)
-    Curses.init_pair(1, Curses::COLOR_RED, Curses::COLOR_BLACK)
-    Curses.init_pair(2, Curses::COLOR_GREEN, Curses::COLOR_BLACK)
-    Curses.stdscr.color_set(0)
+    init_colors
     begin
       yield
     ensure
@@ -52,24 +79,13 @@ class RubyFocus
     end
   end
 
-  def generate_test_data
-    page = Page.new
-    page.lines << Line.new("Line one")<< Line.new("Line two", true) << Line.new("Line three")
-    page.lines << Line.new("Line one")<< Line.new("Line two") << Line.new("Line three")
-    page.lines << Line.new("Line one")<< Line.new("Line two") << Line.new("Line three")
-    
-    @pages << page
-    @current_page = 0
-    @current_line = 0
-  end
-
   def enter_action(action = nil)
     clear = false
     i = @current_page
-    while @pages[i].lines.length > Page.max_length and i < pages.length 
+    while i < pages.length and @pages[i].lines.length == Page.max_length
       i = i + 1
     end
-    if i == pages.length 
+    if i == pages.length
       @pages << Page.new
       @current_line = 0
     end
@@ -113,12 +129,20 @@ class RubyFocus
       Curses.setpos(i + 2, 0)
       Curses.addstr(if i == @current_line then "-> " else "   " end)
       if l.state == 1
-        Curses.stdscr.color_set(1)
+        set_active_color
       elsif l.state == 2
-        Curses.stdscr.attrset(Curses::A_DIM)
+        set_done_color
       end
       Curses.addstr(l.action)
-      if l.state != 0 then Curses.stdscr.color_set(0); Curses.stdscr.attrset(Curses::A_NORMAL) end
+      if l.state != 0 then
+        set_normal_color
+      end
+      Curses.clrtoeol
+      i = i + 1
+    end
+    while i < Page.max_length
+      Curses.setpos(i + 2, 0)
+      Curses.clrtoeol
       i = i + 1
     end
     Curses.refresh
@@ -128,7 +152,6 @@ class RubyFocus
     if @current_page < pages.length - 1
       @current_page = @current_page + 1
       @current_line = 0
-      Curses.clear
     end
   end
 
@@ -136,7 +159,22 @@ class RubyFocus
     if @current_page > 0 then
       @current_page = @current_page - 1
       @current_line = 0
-      Curses.clear
+    end
+  end
+  
+  def next_line
+    if @current_line < @pages[@current_page].lines.length - 1
+      begin
+        @current_line = @current_line + 1
+      end # while @current_line < @pages[@current_page].lines.length - 1 and @pages[@current_page].lines[@current_line].state == 2
+    end
+  end
+  
+  def previous_line
+    if @current_line > 0 then
+      begin
+        @current_line = @current_line - 1
+      end # while @current_line > 0 and @pages[@current_page].lines[@current_line].state == 2
     end
   end
 
@@ -148,8 +186,12 @@ class RubyFocus
 
   def RubyFocus.load_data
     focus = nil
-    File.open("pages.yaml", "r") do |file|
-      focus = YAML::load(file.read)
+    begin
+      File.open("pages.yaml", "r") do |file|
+        focus = YAML::load(file.read)
+      end
+    rescue
+      focus = RubyFocus.new
     end
     return focus
   end
@@ -160,8 +202,8 @@ class RubyFocus
         page = @pages.at(@current_page)
         show_page
         case Curses.getch
-        when Curses::Key::UP then if @current_line > 0 then @current_line = @current_line - 1 end
-        when Curses::Key::DOWN then if @current_line < page.lines.length - 1 then @current_line = @current_line + 1 end
+        when Curses::Key::UP then previous_line
+        when Curses::Key::DOWN then next_line
         when Curses::Key::LEFT then page_backward
         when Curses::Key::RIGHT then page_forward
         when ?e then edit_action
