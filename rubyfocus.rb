@@ -114,6 +114,11 @@ class RubyFocus
     Curses.clrtoeol
   end
 
+  def done_action
+    a = @pages[@current_page].lines[@current_line]
+    a.state = 2
+  end
+
   def toggle_action
     a = @pages[@current_page].lines[@current_line]
     if a.state < 2
@@ -152,15 +157,19 @@ class RubyFocus
   def page_forward
     if @current_page < pages.length - 1
       @current_page = @current_page + 1
-      @current_line = 0
+    else
+      @current_page = 0
     end
+    @current_line = 0
   end
 
   def page_backward
     if @current_page > 0 then
       @current_page = @current_page - 1
-      @current_line = 0
+    else
+      @current_page = pages.length - 1
     end
+    @current_line = 0
   end
   
   def next_line
@@ -197,6 +206,21 @@ class RubyFocus
     end
   end
   
+  def import
+    @pages = Array.new
+    page = Page.new
+    @pages << page
+    File.open("swell.txt").each_line do |line|
+      puts line
+      if line.start_with? "-" then
+        page = Page.new
+        @pages << page
+      else
+        page.lines << Line.new(line)
+      end
+    end
+  end
+
   def RubyFocus.load_data
     focus = nil
     begin
@@ -205,6 +229,7 @@ class RubyFocus
       end
     rescue
       focus = RubyFocus.new
+      focus.import
     end
     return focus
   end
@@ -222,9 +247,11 @@ class RubyFocus
         when ?e then edit_action
         when ?a then enter_action
         when ?s then toggle_action
+        when ?d then done_action
         when ?D then dismiss_page
         when ?q then save_data; break
         end
+        save_data
       end
     end
 
