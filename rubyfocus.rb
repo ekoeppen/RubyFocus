@@ -204,6 +204,26 @@ class RubyFocus
     File.open("pages.yaml", "w") do |file|
       file.syswrite(self.to_yaml)
     end
+    File.open("pages.txt", "w") do |file|
+      file << "=========================================================================\n"
+      dismissed.each do |line|
+        file << "  " << line << "\n"
+      end
+      i = 0
+      @pages.each do |page|
+        file << "--"
+        if i == @current_page then file << " X " else file << "---" end
+        file <<"--------------------------------------------------------------------\n"
+        page.lines.each do |line|
+          if line.state == 1 then prefix = "+ "
+          elsif line.state == 2 then prefix = "- "
+          else prefix = "  "
+          end
+          file << prefix << line.action << "\n"
+        end
+        i = i + 1
+      end
+    end
   end
   
   def import
