@@ -211,9 +211,9 @@ class RubyFocus
       end
       i = 0
       @pages.each do |page|
-        file << "--"
+        file << "---"
         if i == @current_page then file << " X " else file << "---" end
-        file <<"--------------------------------------------------------------------\n"
+        file <<"-------------------------------------------------------------------\n"
         page.lines.each do |line|
           if line.state == 1 then prefix = "+ "
           elsif line.state == 2 then prefix = "- "
@@ -228,17 +228,40 @@ class RubyFocus
   
   def import
     @pages = Array.new
-    page = Page.new
-    @pages << page
-    File.open("swell.txt").each_line do |line|
-      puts line
-      if line.start_with? "-" then
+    reading_dismissed = true
+    page = nil
+    state = 0
+    i = 0
+    File.open("pages.txt").each_line do |line|
+      line.rstrip!
+      if line.start_with? "===" then
+        @dismissed = Array.new
+      elsif line.start_with? "---" then
+        reading_dismissed = false
         page = Page.new
         @pages << page
+        if line.start_with? "--- X"
+          @current_page = i
+        end
+        i = i + 1
       else
-        page.lines << Line.new(line)
+        if reading_dismissed
+          line.slice!(0..1)
+          dismissed << line
+        else
+          if line.start_with? "  "
+            state = 0
+          elsif line.start_with? "+ "
+            state = 1
+          else
+            state = 2
+          end
+          line.slice!(0..1)
+          page.lines << Line.new(line, state)
+        end
       end
     end
+    @current_line = 0
   end
 
   def RubyFocus.load_data
