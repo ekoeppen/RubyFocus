@@ -83,10 +83,10 @@ class RubyFocus
   def enter_action(action = nil)
     clear = false
     i = @current_page
-    while i < pages.length and @pages[i].lines.length == Page.max_length
+    while i < pages.length and @pages[i].lines.length >= Page.max_length
       i = i + 1
     end
-    if i == pages.length
+    if i >= pages.length
       @pages << Page.new
       @current_line = 0
     end
