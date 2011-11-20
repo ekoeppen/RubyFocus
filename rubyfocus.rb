@@ -79,7 +79,7 @@ class RubyFocus
       Curses.close_screen
     end
   end
-
+  
   def enter_action(action = nil)
     clear = false
     i = @current_page
@@ -199,40 +199,37 @@ class RubyFocus
       @pages << Page.new
     end
   end
-
-  def save_data
-    File.open("pages.yaml", "w") do |file|
-      file.syswrite(self.to_yaml)
+  
+  def to_s
+    r = ""
+    r << "=========================================================================\n"
+    dismissed.each do |line|
+      r << "  " << line << "\n"
     end
-    File.open("pages.txt", "w") do |file|
-      file << "=========================================================================\n"
-      dismissed.each do |line|
-        file << "  " << line << "\n"
-      end
-      i = 0
-      @pages.each do |page|
-        file << "---"
-        if i == @current_page then file << " X " else file << "---" end
-        file <<"-------------------------------------------------------------------\n"
-        page.lines.each do |line|
-          if line.state == 1 then prefix = "+ "
-          elsif line.state == 2 then prefix = "- "
-          else prefix = "  "
-          end
-          file << prefix << line.action << "\n"
+    i = 0
+    @pages.each do |page|
+      r << "---"
+      if i == @current_page then r << " X " else r << "---" end
+      r <<"-------------------------------------------------------------------\n"
+      page.lines.each do |line|
+        if line.state == 1 then prefix = "+ "
+        elsif line.state == 2 then prefix = "- "
+        else prefix = "  "
         end
-        i = i + 1
+        r << prefix << line.action << "\n"
       end
+      i = i + 1
     end
+    return r
   end
   
-  def import
+  def from_s(string)
     @pages = Array.new
     reading_dismissed = true
     page = nil
     state = 0
     i = 0
-    File.open("pages.txt").each_line do |line|
+    string.each_line do |line|
       line.rstrip!
       if line.start_with? "===" then
         @dismissed = Array.new
@@ -264,17 +261,29 @@ class RubyFocus
     @current_line = 0
   end
 
+  def save_data
+    File.open("pages.yaml", "w") do |file|
+      file.syswrite(self.to_yaml)
+    end
+    File.open("pages.txt", "w") do |file|
+      file << to_s
+    end
+  end
+  
   def RubyFocus.load_data
-    focus = nil
+    f = nil
     begin
-      File.open("pages.yaml", "r") do |file|
-        focus = YAML::load(file.read)
+#      File.open("pages.yaml", "r") do |file|
+#        f = YAML::load(file.read)
+#      end
+      File.open("pages.txt") do |file|
+        f = RubyFocus.new
+        f.from_s(file.read)
       end
     rescue
-      focus = RubyFocus.new
-      focus.import
+      f = RubyFocus.new
     end
-    return focus
+    return f
   end
 
   def run
@@ -282,7 +291,8 @@ class RubyFocus
       loop do
         page = @pages.at(@current_page)
         show_page
-        case Curses.getch
+        c = Curses.getch
+        case c
         when Curses::Key::UP then previous_line
         when Curses::Key::DOWN then next_line
         when Curses::Key::LEFT then page_backward
@@ -294,13 +304,17 @@ class RubyFocus
         when ?D then dismiss_page
         when ?q then save_data; break
         end
-        save_data
+        if c != Curses::Key::UP and c != Curses::Key::DOWN
+          save_data
+        end
       end
     end
 
   end
   
 end
+
+if File.exist?(ENV["HOME"] + "/.rubyfocusrc") then load(ENV["HOME"] + "/.rubyfocusrc") end
 
 RubyFocus.load_data.run
 
