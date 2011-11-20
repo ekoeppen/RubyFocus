@@ -2,6 +2,7 @@
 
 require 'curses'
 require 'yaml'
+require 'thread'
 
 class Line
   attr_accessor :action
@@ -36,6 +37,7 @@ class RubyFocus
   attr_accessor :current_line
   attr_accessor :use_color
   attr_accessor :dismissed
+  attr_accessor :mutex
  
   def init_colors
     @use_color = nil
@@ -65,6 +67,7 @@ class RubyFocus
     @pages << Page.new
     @current_page = 0
     @current_line = 0
+    @mutex = Mutex.new
   end
 
   def init_screen
@@ -262,11 +265,13 @@ class RubyFocus
   end
 
   def save_data
-    File.open("pages.yaml", "w") do |file|
-      file.syswrite(self.to_yaml)
-    end
-    File.open("pages.txt", "w") do |file|
-      file << to_s
+    @mutex.synchronize do
+      File.open("pages.yaml", "w") do |file|
+        file.syswrite(self.to_yaml)
+      end
+      File.open("pages.txt", "w") do |file|
+        file << to_s
+      end
     end
   end
   
@@ -288,21 +293,24 @@ class RubyFocus
 
   def run
     init_screen do
-      loop do
+      done = false
+      while not done
         page = @pages.at(@current_page)
         show_page
         c = Curses.getch
-        case c
-        when Curses::Key::UP then previous_line
-        when Curses::Key::DOWN then next_line
-        when Curses::Key::LEFT then page_backward
-        when Curses::Key::RIGHT then page_forward
-        when ?e then edit_action
-        when ?a then enter_action
-        when ?s then toggle_action
-        when ?d then done_action
-        when ?D then dismiss_page
-        when ?q then save_data; break
+        @mutex.synchronize do
+          case c
+          when Curses::Key::UP then previous_line
+          when Curses::Key::DOWN then next_line
+          when Curses::Key::LEFT then page_backward
+          when Curses::Key::RIGHT then page_forward
+          when ?e then edit_action
+          when ?a then enter_action
+          when ?s then toggle_action
+          when ?d then done_action
+          when ?D then dismiss_page
+          when ?q then done = true
+          end
         end
         if c != Curses::Key::UP and c != Curses::Key::DOWN
           save_data
