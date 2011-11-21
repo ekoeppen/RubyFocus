@@ -217,7 +217,7 @@ class RubyFocus
     @pages.each do |page|
       r << "---"
       if i == @current_page then r << " X " else r << "---" end
-      r <<"-------------------------------------------------------------------\n"
+      r << "-------------------------------------------------------------------\n"
       page.lines.each do |line|
         if line.state == 1 then prefix = "+ "
         elsif line.state == 2 then prefix = "- "
