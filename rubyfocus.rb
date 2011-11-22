@@ -69,7 +69,11 @@ class RubyFocus
     @current_line = 0
     @mutex = Mutex.new
   end
-
+  
+  def quit
+    save_data
+  end
+  
   def init_screen
     Curses.noecho
     Curses.init_screen
@@ -332,7 +336,9 @@ end
 
 if File.exist?(ENV["HOME"] + "/.rubyfocusrc") then load(ENV["HOME"] + "/.rubyfocusrc") end
 
-RubyFocus.load_data.run
+focus = RubyFocus.load_data
+focus.run
+focus.quit
 
 # vim:ts=2:expandtab:sw=2:
 
