@@ -18,7 +18,7 @@ class Page
   
   attr_accessor :lines
   attr_accessor :number
-  @@k_max_length = 20
+  @@k_max_length = 30
 
   def initialize
     @lines = Array.new
@@ -97,7 +97,10 @@ class RubyFocus
       Curses.echo; Curses.curs_set(1)
       Curses.setpos(0, 0)
       Curses.addstr("New action: ")
-      @pages[i].lines << Line.new(Curses.getstr)
+      action = Curses.getstr
+      if action.length > 0
+        @pages[i].lines << Line.new(action)
+      end
       Curses.noecho; Curses.curs_set(0)
       Curses.setpos(0, 0)
       Curses.clrtoeol
@@ -180,6 +183,8 @@ class RubyFocus
       begin
         @current_line = @current_line + 1
       end # while @current_line < @pages[@current_page].lines.length - 1 and @pages[@current_page].lines[@current_line].state == 2
+    else
+      @current_line = 0
     end
   end
   
@@ -188,6 +193,8 @@ class RubyFocus
       begin
         @current_line = @current_line - 1
       end # while @current_line > 0 and @pages[@current_page].lines[@current_line].state == 2
+    else
+      @current_line = @pages[@current_page].lines.length - 1
     end
   end
 
@@ -280,6 +287,7 @@ class RubyFocus
     begin
 #      File.open("pages.yaml", "r") do |file|
 #        f = YAML::load(file.read)
+#        f.mutex = Mutex.new
 #      end
       File.open("pages.txt") do |file|
         f = RubyFocus.new
