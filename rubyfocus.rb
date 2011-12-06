@@ -275,7 +275,7 @@ class RubyFocus
     @current_line = 0
   end
 
-  def save_data
+  def save_data(always = false)
     @mutex.synchronize do
       File.open("pages.yaml", "w") do |file|
         file.syswrite(self.to_yaml)
@@ -310,19 +310,18 @@ class RubyFocus
         page = @pages.at(@current_page)
         show_page
         c = Curses.getch
-        @mutex.synchronize do
-          case c
-          when Curses::Key::UP then previous_line
-          when Curses::Key::DOWN then next_line
-          when Curses::Key::LEFT then page_backward
-          when Curses::Key::RIGHT then page_forward
-          when ?e then edit_action
-          when ?a then enter_action
-          when ?s then toggle_action
-          when ?d then done_action
-          when ?D then dismiss_page
-          when ?q then done = true
-          end
+        case c
+        when Curses::Key::UP then previous_line
+        when Curses::Key::DOWN then next_line
+        when Curses::Key::LEFT then page_backward
+        when Curses::Key::RIGHT then page_forward
+        when ?e then edit_action
+        when ?a then enter_action
+        when ?s then toggle_action
+        when ?d then done_action
+        when ?D then dismiss_page
+        when ?S then save_data(true)
+        when ?q then done = true
         end
         if c != Curses::Key::UP and c != Curses::Key::DOWN
           save_data
