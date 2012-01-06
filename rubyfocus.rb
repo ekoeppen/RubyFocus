@@ -103,7 +103,7 @@ class RubyFocus
       Curses.addstr("New action: ")
       action = Curses.getstr
       if action.length > 0
-        @pages[i].lines << Line.new(action)
+        @pages[i].lines.insert(0, Line.new(action))
       end
       Curses.noecho; Curses.curs_set(0)
       Curses.setpos(0, 0)
