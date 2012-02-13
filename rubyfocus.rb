@@ -3,6 +3,7 @@
 require 'curses'
 require 'yaml'
 require 'thread'
+require 'date'
 
 class Line
   attr_accessor :action
@@ -18,10 +19,12 @@ class Page
   
   attr_accessor :lines
   attr_accessor :number
+  attr_accessor :created
   @@k_max_length = 30
 
   def initialize
     @lines = Array.new
+    @created = Date.today
   end
   
   def Page.max_length
@@ -140,9 +143,11 @@ class RubyFocus
   end
 
   def show_page
+    Curses.setpos(2, Curses.cols - 15)
+    Curses.addstr(@pages.at(@current_page).created.strftime('%Y-%m-%d'))
     i = 0
     for l in @pages.at(@current_page).lines do
-      Curses.setpos(i + 2, 0)
+      Curses.setpos(i + 3, 0)
       Curses.addstr(if i == @current_line then "-> " else "   " end)
       if l.state == 1
         set_active_color
@@ -157,7 +162,7 @@ class RubyFocus
       i = i + 1
     end
     while i < Page.max_length
-      Curses.setpos(i + 2, 0)
+      Curses.setpos(i + 3, 0)
       Curses.clrtoeol
       i = i + 1
     end
@@ -224,7 +229,8 @@ class RubyFocus
     @pages.each do |page|
       r << "---"
       if i == @current_page then r << " X " else r << "---" end
-      r << "-------------------------------------------------------------------\n"
+      r << "-------------------------------------------------- "
+      r << page.created.strftime('%Y-%m-%d') << " -----\n"
       page.lines.each do |line|
         if line.state == 1 then prefix = "+ "
         elsif line.state == 2 then prefix = "- "
@@ -250,6 +256,7 @@ class RubyFocus
       elsif line.start_with? "---" then
         reading_dismissed = false
         page = Page.new
+        page.created = Date.parse(line[-16..-6])
         @pages << page
         if line.start_with? "--- X"
           @current_page = i
@@ -324,7 +331,7 @@ class RubyFocus
         when ?q then done = true
         end
         if c != Curses::Key::UP and c != Curses::Key::DOWN
-          save_data
+          save_data(true)
         end
       end
     end
